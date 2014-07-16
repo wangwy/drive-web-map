@@ -1,0 +1,8 @@
+{
+  "name": "drive-web-map",
+  "version": "1.0.0",
+  "dependencies": {
+    "angular": "1.2.4",
+    "realtime-store": "gh-pages"
+  }
+}
