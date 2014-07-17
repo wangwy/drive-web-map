@@ -1,0 +1,31 @@
+{
+  "name": "realtime-store",
+  "main": "./realtime.store.js",
+  "dependencies": {
+    "bower-sockjs-client": "0.3.4",
+    "google-diff-match-patch-js": "1.0.0"
+  },
+  "homepage": "https://github.com/goodow/bower-realtime-store",
+  "authors": [
+    "Larry Tin <dev@goodow.com>"
+  ],
+  "description": "Google Docs–style collaboration via the use of operational transforms",
+  "keywords": [
+    "realtime",
+    "collaboration",
+    "operational",
+    "transformation",
+    "ot",
+    "gwt"
+  ],
+  "license": "Apache 2.0",
+  "_release": "dee6c92085",
+  "_resolution": {
+    "type": "branch",
+    "branch": "gh-pages",
+    "commit": "dee6c920859a3b5ef325d41953af55d8824a2640"
+  },
+  "_source": "git://github.com/goodow/bower-realtime-store.git",
+  "_target": "gh-pages",
+  "_originalSource": "realtime-store"
+}
