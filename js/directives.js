@@ -3,8 +3,8 @@
 /* Directives */
 
 
-angular.module('drive.directives',[])
-    .directive('goodMap', ['bus', '$window', function (bus, $window) {
+angular.module('drive.directives', [])
+    .directive('goodMap', ['bus', '$window', 'store', function (bus, $window, store) {
       function link(scope, element, attrs) {
         /**
          * google地图
@@ -16,48 +16,15 @@ angular.module('drive.directives',[])
          */
         var markersArray = [];
         /**
+         * 用于存储发送过来的协议
+         * @type {CollaborativeMap}
+         */
+        var mapMap = null;
+        /**
          * 当设备上线时显示的地图标记的自定义图标
          * @type {string}
          */
         var image = 'img/markerIcon.png';
-
-        /**
-         * 获取在线的所有设备
-         */
-        function getLogin() {
-          var searchParam = {
-            "action": "search",
-            "_index": "drive_test",
-            "_type": "deviceStatus",
-            "source": {
-              "size": 10000,
-              "query": {
-                "term": {"status": "login"}
-              }
-            }
-          };
-
-
-          bus().send("realtime/search", searchParam, function (message) {
-            var datas = message.body().hits.hits;
-            if (!datas || datas.length == 0) {
-              return;
-            }
-            scope.$apply(function () {
-              scope.mapInfos = datas;
-            });
-          });
-        }
-
-
-        /**
-         * 监听drive.devicestatus频道
-         */
-        bus().subscribe("drive/devicestatus", function (registerMessage) {
-          scope.$apply(function () {
-            scope.mapInfo = registerMessage.body();
-          });
-        });
 
         /**
          * 初始化地图，中心为北京
@@ -73,32 +40,48 @@ angular.module('drive.directives',[])
           });
           map = new google.maps.Map(element[0], mapOptions);
 
-          getLogin();
+          google.maps.event.addListener(map,'click',function(event){
+            console.log(event.latLng.toString());
+            mapMap.set(event.latLng.toString(),{coordinates: [event.latLng.lng(), event.latLng.lat()], deviceId: event.latLng.toString(), status: 'login', information: 'jljljljk'});
+          });
         }
 
-
         /**
-         * 设备上先后再地图上显示出来
+         * 设备上线或下线在地图上显示出来
          * @param latitude    纬度
          * @param longitude   经度
          * @param information 显示的信息
          * @param status      状态
          */
-        function addMarker(latitude, longitude, title, information) {
+        function updateMarker(latitude, longitude, title, status, information) {
           if (markersArray) {
             for (var i in markersArray) {
               if (markersArray[i].getTitle() == title) {
-                markersArray[i].setIcon(image);
+                if (status == "login") {
+                  markersArray[i].setIcon(image);
+                  markersArray[i].setPosition(new google.maps.LatLng(latitude,longitude))
+                } else {
+                  markersArray[i].setIcon();
+                  markersArray[i].setPosition(new google.maps.LatLng(latitude,longitude))
+                }
                 return;
               }
             }
           }
-          var marker = new google.maps.Marker({
-            position: new google.maps.LatLng(latitude, longitude),
-            title: title,
-            icon: image,
-            map: map
-          });
+          if (status == "login") {
+            var marker = new google.maps.Marker({
+              position: new google.maps.LatLng(latitude, longitude),
+              title: title,
+              icon: image,
+              map: map
+            });
+          } else {
+            var marker = new google.maps.Marker({
+              position: new google.maps.LatLng(latitude, longitude),
+              title: title,
+              map: map
+            });
+          }
           var infowindow = new google.maps.InfoWindow({
             content: information
           });
@@ -112,49 +95,59 @@ angular.module('drive.directives',[])
         }
 
         /**
-         * 设备下线后更改地图上标记的图标
-         * @param latitude    经度
-         * @param longitude   纬度
-         * @param information 显示的信息
-         * @param status      状态
+         * 更新在地图上显示的标签
          */
-        function changeMarker(title) {
-          if (markersArray) {
-            for (var i in markersArray) {
+        var updateUi = function (evt) {
+          updateMarker(mapMap.get(evt.property()).coordinates[1], mapMap.get(evt.property()).coordinates[0], mapMap.get(evt.property()).deviceId, mapMap.get(evt.property()).status, mapMap.get(evt.property()).information)
+        }
 
-              if (markersArray[i].getTitle() == title) {
-                markersArray[i].setIcon();
+        /**
+         * 初始化collaborativeMap，并查询出设备
+         * @param model 模型
+         */
+        var initializeModel = function (model) {
+          var field = model.createMap();
+          var searchParam = {
+            "action": "search",
+            "_index": "drive_test",
+            "_type": "deviceStatus",
+            "source": {
+              "size": 10000,
+              "query": {
+                "term": {"status": "login"}
               }
             }
-          }
-        };
+          };
 
-        /**
-         * 监听设备上线、下线
-         */
-        scope.$watch('mapInfo', function (newValue, oldValue) {
-          if (newValue !== oldValue && newValue !== "[]") {
-            if (newValue.status == "login") {
-              addMarker(newValue.coordinates[1], newValue.coordinates[0], newValue.deviceId, newValue.owner);
-            } else if (newValue.status == "logout") {
-              changeMarker(newValue.deviceId);
+          bus().send("realtime/search", searchParam, function (message) {
+            var datas = message.body().hits.hits;
+            if (!datas || datas.length == 0) {
+              return;
             }
-          }
-        });
+            mapList.pushAll(datas);
+          });
+          model.getRoot().set('mapMap', field);
+        }
 
 
         /**
-         * 获取所有的在线设备
+         *
+         * @param doc
          */
-        scope.$watch('mapInfos', function (newValue, oldValue) {
-          if (newValue !== oldValue && newValue.length != 0) {
-            for (var i in newValue) {
-              addMarker(newValue[i]._source.coordinates[1], newValue[i]._source.coordinates[0], newValue[i]._source.deviceId, newValue[i]._source.owner)
+        var onFileLoad = function (doc) {
+          mapMap = doc.getModel().getRoot().get('mapMap');
+          mapMap.onValueChanged(updateUi);
+          initialize();
+          var keys = mapMap.keys();
+          if (mapMap.size() > 0) {
+            for (var i = 0; i < mapMap.size(); i++) {
+              var key = keys[i]
+              updateMarker(mapMap.get(key).coordinates[1], mapMap.get(key).coordinates[0], mapMap.get(key).deviceId, mapMap.get(key).status, mapMap.get(key).information)
             }
           }
-        });
-        google.maps.event.addDomListener(window, 'load', initialize);
-//        initialize();
+
+        }
+        store.load("drivewebmap/16", onFileLoad, initializeModel, '');
       }
 
       return{
