@@ -1,0 +1,8 @@
+# id: drivewebmap/1
+---
+mapMap:
+  key: # leaf
+    deviceId: sid # 设备号
+    information: 北京市幼儿园 # 信息
+    coordinates: [-71.34, 41.12] # [经度, 纬度]
+    status: login # 在线状态
