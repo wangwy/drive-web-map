@@ -41,8 +41,7 @@ angular.module('drive.directives', [])
           map = new google.maps.Map(element[0], mapOptions);
 
           google.maps.event.addListener(map,'click',function(event){
-            console.log(event.latLng.toString());
-            mapMap.set(event.latLng.toString(),{coordinates: [event.latLng.lng(), event.latLng.lat()], deviceId: event.latLng.toString(), status: 'login', information: 'jljljljk'});
+            mapMap.set(event.latLng.toString(),{coordinates: [event.latLng.lng(), event.latLng.lat()], deviceId: event.latLng.toString(), status: 'login'});
           });
         }
 
@@ -60,9 +59,11 @@ angular.module('drive.directives', [])
                 if (status == "login") {
                   markersArray[i].setIcon(image);
                   markersArray[i].setPosition(new google.maps.LatLng(latitude,longitude))
-                } else {
+                } else if(status == "logout"){
                   markersArray[i].setIcon();
-                  markersArray[i].setPosition(new google.maps.LatLng(latitude,longitude))
+                } else if(status == "null"){
+                  markersArray[i].setMap(null);
+                  markersArray.splice(i,1);
                 }
                 return;
               }
@@ -90,7 +91,19 @@ angular.module('drive.directives', [])
           google.maps.event.addListener(marker, 'mouseover', function () {
             infowindow.open(map, marker);
           });
-
+          //当鼠标离开后，关闭标记上的信息
+          google.maps.event.addListener(marker, 'mouseout', function(){
+            infowindow.close();
+          });
+          //单击标记，设备下线
+          google.maps.event.addListener(marker, 'click', function(){
+            mapMap.set(marker.getPosition().toString(),{coordinates: [marker.getPosition().lng(), marker.getPosition().lat()], deviceId: marker.getPosition().toString(), status: 'logout'});
+          });
+          //双击标记，删除设备标记
+          google.maps.event.addListener(marker, 'dblclick', function(){
+            mapMap.set(marker.getPosition().toString(),{coordinates: [marker.getPosition().lng(), marker.getPosition().lat()], deviceId: marker.getPosition().toString(), status: 'null'});
+            mapMap.remove(marker.getPosition().toString());
+          });
           markersArray.push(marker);
         }
 
@@ -124,7 +137,9 @@ angular.module('drive.directives', [])
             if (!datas || datas.length == 0) {
               return;
             }
-            mapList.pushAll(datas);
+            for(var i in datas){
+              mapMap.set(datas[i]._source.deviceId,{coordinates: datas[i]._source.coordinates, deviceId: datas[i]._source.deviceId, status: 'login', information: datas[i]._source.owner});
+            }
           });
           model.getRoot().set('mapMap', field);
         }
@@ -147,7 +162,7 @@ angular.module('drive.directives', [])
           }
 
         }
-        store.load("drivewebmap/16", onFileLoad, initializeModel, '');
+        store.load("drivewebmap/17", onFileLoad, initializeModel, '');
       }
 
       return{
